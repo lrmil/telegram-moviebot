@@ -1,73 +1,56 @@
-import logging
 import os
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext
+import logging
+from telegram import Update
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 import requests
 
 # Enable logging
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
 logger = logging.getLogger(__name__)
 
-# Environment variables
-SHORTENER_API_KEY = os.getenv('SHORTENER_API_KEY')
-BOT_TOKEN = os.getenv('7482688136:AAFAP2heGBUeLT_Ch7TCR6icFZxGMI-g5Wc')
-
-def shorten_url(url):
-    api_url = 'https://api.shorte.st/v1/data/url'
-    headers = {
-        'public-api-token': SHORTENER_API_KEY,
-    }
-    data = {'urlToShorten': url}
-    response = requests.put(api_url, headers=headers, data=data)
-    if response.status_code == 201:
-        return response.json().get('shortenedUrl')
-    else:
-        logger.error(f"Error shortening URL: {response.text}")
-        return url
+# Define your bot token and API keys
+BOT_TOKEN = '7482688136:AAFAP2heGBUeLT_Ch7TCR6icFZxGMI-g5Wc'
+MOVIE_API_KEY = '19311ff7'
+LINK_SHORTENER_API_KEY = 'YOUR_LINK_SHORTENER_API_KEY'
 
 def start(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text('Hi! Use /search <movie name> to find movies.')
+    update.message.reply_text('Hi! Use /download <movie_name> to download a movie.')
 
-def search(update: Update, context: CallbackContext) -> None:
-    query = ' '.join(context.args)
-    if not query:
-        update.message.reply_text('Please provide a movie name to search for.')
+def download_movie(update: Update, context: CallbackContext) -> None:
+    movie_name = ' '.join(context.args)
+    if not movie_name:
+        update.message.reply_text('Please provide a movie name.')
         return
 
-    results = ["Movie1", "Movie2", "Movie3"]
-    keyboard = [[InlineKeyboardButton(movie, callback_data=movie)] for movie in results]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    # Fetch movie details from a movie database API
+    movie_api_url = f'http://www.omdbapi.com/?t={movie_name}&apikey={19311ff7}'
+    response = requests.get(movie_api_url)
+    data = response.json()
 
-    update.message.reply_text('Search results:', reply_markup=reply_markup)
+    if data['Response'] == 'False':
+        update.message.reply_text('Movie not found!')
+        return
 
-def button(update: Update, context: CallbackContext) -> None:
-    query = update.callback_query
-    query.answer()
+    # Generate download link (dummy example)
+    download_link = f'http://example.com/download/{movie_name}'
 
-    movie_name = query.data
-    download_link = f"https://example.com/download/{movie_name}"
-    short_link = shorten_url(download_link)
+    # Shorten the download link using a link shortener API
+    shortener_api_url = f'https://api.yourshortener.com/shorten?url={download_link}&apikey={LINK_SHORTENER_API_KEY}'
+    short_response = requests.get(shortener_api_url)
+    short_data = short_response.json()
+    short_link = short_data['shortenedUrl']
 
-    query.edit_message_text(text=f"Download link for {movie_name}: {short_link}")
-
-def error(update: Update, context: CallbackContext) -> None:
-    logger.warning('Update "%s" caused error "%s"', update, context.error)
+    update.message.reply_text(f'Download link for {movie_name}: {short_link}')
 
 def main() -> None:
-    if not BOT_TOKEN:
-        logger.error("BOT_TOKEN environment variable is missing")
-        return
-    if not SHORTENER_API_KEY:
-        logger.error("SHORTENER_API_KEY environment variable is missing")
-        return
-
     updater = Updater(BOT_TOKEN)
-
     dispatcher = updater.dispatcher
+
     dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(CommandHandler("search", search))
-    dispatcher.add_handler(CallbackQueryHandler(button))
-    dispatcher.add_error_handler(error)
+    dispatcher.add_handler(CommandHandler("download", download_movie))
 
     updater.start_polling()
     updater.idle()
