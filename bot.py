@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 # Environment variables
 SHORTENER_API_KEY = os.getenv('SHORTENER_API_KEY')
-BOT_TOKEN = os.getenv('BOT_TOKEN')
+BOT_TOKEN = os.getenv('7482688136:AAFAP2heGBUeLT_Ch7TCR6icFZxGMI-g5Wc')
 
 def shorten_url(url):
     api_url = 'https://api.shorte.st/v1/data/url'
